@@ -1,14 +1,12 @@
 #!/usr/bin/python
 
 from subprocess import Popen, PIPE
-from requests.utils import quote
-#import requests
 import json
-#from watson_developer_cloud import AlchemyLanguageV1
 import urllib2
 from bs4 import BeautifulSoup
 import re
 import psycopg2
+from Tkinter import *
 
 musicmatch_key = "b8ee0310a43cf402ea580d6d03873447"
 
@@ -49,9 +47,9 @@ def get_lyric_from_link(link):
 
 def get_link(artist,track):
     link = 'https://api.musixmatch.com/ws/1.1/track.search?format=json&callback=callback&q_track='
-    link += quote(track,safe='')
+    link += urllib2.quote(track,safe='')
     link += '&q_artist='
-    link += quote(artist,safe='')
+    link += urllib2.quote(artist,safe='')
     link += '&quorum_factor=1&apikey=b8ee0310a43cf402ea580d6d03873447'
     response = urllib2.urlopen(link)#.read()
     data = json.load(response)
@@ -82,7 +80,7 @@ def db_disconnect(conn,cur):
     
 def store_lyr(artist,track,lyric,cur,conn):    
     #lyric escaping!!
-    lyric = quote(lyric.encode('utf8'),safe='')
+    lyric = urllib2.quote(lyric.encode('utf8'),safe='')
     query = "INSERT INTO lyric VALUES ('" + artist + "','"+track+"','"+lyric+"');"
     try:
         cur.execute(query)
@@ -111,10 +109,42 @@ def main():
         link = get_link(artist, track)
         lyric = get_lyric_from_link(link)        
         store_lyr(artist,track,lyric,cur,conn)
+    #print lyric
+    lyric = lyric.replace('\\n','\n')
     print lyric
     db_disconnect(conn,cur)
     
-main()  
+#main()
+
+class Application(Frame):
+    def say_hi(self):
+        print "hi there, everyone!"
+
+    def createWidgets(self):
+        self.QUIT = Button(self)
+        self.QUIT["text"] = "QUIT"
+        self.QUIT["fg"]   = "red"
+        self.QUIT["command"] =  self.quit
+
+        self.QUIT.pack({"side": "left"})
+
+        self.hi_there = Button(self)
+        self.hi_there["text"] = "Hello",
+        self.hi_there["command"] = self.say_hi
+
+        self.hi_there.pack({"side": "left"})
+
+    def __init__(self, master=None):
+        Frame.__init__(self, master)
+        self.pack()
+        self.createWidgets()
+
+root = Tk()
+app = Application(master=root)
+app.master.title("LyricCrawl")
+app.master.maxsize(1000, 400)
+app.mainloop()
+root.destroy()
     
 #if __name__ == '__main__':
     #main()
