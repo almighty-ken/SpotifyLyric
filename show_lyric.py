@@ -63,6 +63,8 @@ def artist_translate(artist,cur):
     query = "SELECT c_name FROM name_translation WHERE e_name = '" + artist+"';"
     #print query
     cur.execute(query)
+    if(cur.rowcount == 0):
+        return artist
     rows = cur.fetchone()
     return rows[0]
 
@@ -78,25 +80,39 @@ def db_disconnect(conn,cur):
     conn.close()
     cur.close()
     
-def store_lyr(artist,track,lyric,cur):
+def store_lyr(artist,track,lyric,cur,conn):    
     #lyric escaping!!
-    query = u"INSERT INTO lyric VALUES ('" + artist + "','"+track+"','"+lyric+"');"
+    lyric = quote(lyric.encode('utf8'),safe='')
+    query = "INSERT INTO lyric VALUES ('" + artist + "','"+track+"','"+lyric+"');"
     try:
         cur.execute(query)
+        conn.commit()
     except:
         print "lyric store fail"
+        
+def fetch_cached_lyric(artist,track,cur,conn):
+    cur.execute("SELECT lyric FROM lyric WHERE lyric.artist = %s AND lyric.track = %s;",(artist,track))
+    if(cur.rowcount==0):
+        return False
+    else:
+        lyric = cur.fetchone()
+        lyric = lyric[0]
+        lyric = urllib2.unquote(lyric)
+        return lyric
 
 def main():
     conn,cur = db_connect()
     artist = fetch_artist()
-    #artist = artist_translate(artist,cur)
+    artist = artist_translate(artist,cur)
     track = fetch_track()
     time = fetch_time()
-    link = get_link(artist, track)
-    lyric = get_lyric_from_link(link)
+    lyric = fetch_cached_lyric(artist,track,cur,conn)
+    if(lyric == False):
+        link = get_link(artist, track)
+        lyric = get_lyric_from_link(link)        
+        store_lyr(artist,track,lyric,cur,conn)
     print lyric
-    store_lyr(artist,track,lyric,cur)
-    db_disconnect()
+    db_disconnect(conn,cur)
     
 main()  
     
