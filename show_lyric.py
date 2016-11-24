@@ -8,6 +8,7 @@ import json
 import urllib2
 from bs4 import BeautifulSoup
 import re
+import psycopg2
 
 musicmatch_key = "b8ee0310a43cf402ea580d6d03873447"
 
@@ -54,13 +55,31 @@ def get_link(artist,track):
     #print url
     return url
 
+def artist_translate(artist):
+    try:
+        conn = psycopg2.connect("dbname='spotify_lyric' user='ken' host='localhost' password=''")
+    except:
+        print "DB connection fail"
+    cur = conn.cursor()
+    query = "SELECT c_name FROM name_translation WHERE e_name = '" + artist+"';"
+    #print query
+    cur.execute(query)
+    rows = cur.fetchone()
+    conn.close()
+    cur.close()
+    return rows[0] 
+    
+
 def main():
     artist = fetch_artist()
+    artist = artist_translate(artist)
     track = fetch_track()
     time = fetch_time()
     link = get_link(artist, track)
     lyric = get_lyric_from_link(link)
     print lyric
     
-if __name__ == '__main__':
-    main()
+main()  
+    
+#if __name__ == '__main__':
+    #main()
