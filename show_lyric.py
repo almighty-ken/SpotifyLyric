@@ -37,7 +37,11 @@ def fetch_time():
     return time
 
 def get_lyric_from_link(link):
-    data = urllib2.urlopen(link)
+    try:
+        data = urllib2.urlopen(link)
+    except:
+        print 'Sorry no lyrics!'
+        return
     soup = BeautifulSoup(data,'html.parser')
     lyr_group = soup.find('script',text=re.compile('__mxmState'))
     lyr_text = re.search(r'"body":"([^"]*)',lyr_group.text)
@@ -55,29 +59,44 @@ def get_link(artist,track):
     #print url
     return url
 
-def artist_translate(artist):
+def artist_translate(artist,cur):
+    query = "SELECT c_name FROM name_translation WHERE e_name = '" + artist+"';"
+    #print query
+    cur.execute(query)
+    rows = cur.fetchone()
+    return rows[0]
+
+def db_connect():
     try:
         conn = psycopg2.connect("dbname='spotify_lyric' user='ken' host='localhost' password=''")
     except:
         print "DB connection fail"
     cur = conn.cursor()
-    query = "SELECT c_name FROM name_translation WHERE e_name = '" + artist+"';"
-    #print query
-    cur.execute(query)
-    rows = cur.fetchone()
+    return conn,cur
+    
+def db_disconnect(conn,cur):
     conn.close()
     cur.close()
-    return rows[0] 
     
+def store_lyr(artist,track,lyric,cur):
+    #lyric escaping!!
+    query = u"INSERT INTO lyric VALUES ('" + artist + "','"+track+"','"+lyric+"');"
+    try:
+        cur.execute(query)
+    except:
+        print "lyric store fail"
 
 def main():
+    conn,cur = db_connect()
     artist = fetch_artist()
-    artist = artist_translate(artist)
+    #artist = artist_translate(artist,cur)
     track = fetch_track()
     time = fetch_time()
     link = get_link(artist, track)
     lyric = get_lyric_from_link(link)
     print lyric
+    store_lyr(artist,track,lyric,cur)
+    db_disconnect()
     
 main()  
     
