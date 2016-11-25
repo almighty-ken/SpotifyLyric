@@ -69,59 +69,33 @@ def artist_translate(artist,dic):
     if artist in dic:
         return dic[artist]
     return unicode(artist,'utf-8')
-
-def db_connect():
-    try:
-        conn = psycopg2.connect("dbname='spotify_lyric' user='ken' host='localhost' password=''")
-    except:
-        print "DB connection fail"
-    cur = conn.cursor()
-    return conn,cur
     
-def db_disconnect(conn,cur):
-    conn.close()
-    cur.close()
-    
-def store_lyr(artist,track,lyric,cur,conn):    
-    #lyric escaping!!
-    lyric = urllib2.quote(lyric.encode('utf8'),safe='')
-    query = "INSERT INTO lyric VALUES ('" + artist + "','"+track+"','"+lyric+"');"
-    try:
-        cur.execute(query)
-        conn.commit()
-    except:
-        print "lyric store fail"
+def store_lyr(artist,track,lyric,dic):    
+    dic[(artist,track)] = lyric
         
-def fetch_cached_lyric(artist,track,cur,conn):
-    cur.execute("SELECT lyric FROM lyric WHERE lyric.artist = %s AND lyric.track = %s;",(artist,track))
-    if(cur.rowcount==0):
-        return False
-    else:
-        lyric = cur.fetchone()
-        lyric = lyric[0]
-        lyric = urllib2.unquote(lyric)
-        return lyric
+def fetch_cached_lyric(artist,track,dic):
+    if((artist,track) in dic):
+        return dic[(artist,track)]
+    return None
 
 def fetch_lyric():
-    global dic
-    #conn,cur = db_connect()
+    global name_dic
+    global lyr_db
     artist = fetch_artist()
     artist = artist_translate(artist,dic)
     track = fetch_track()
     #time = fetch_time()
-    #lyric = fetch_cached_lyric(artist,track,cur,conn)
-    lyric = False
-    if(lyric == False):
+    lyric = fetch_cached_lyric(artist,track,lyr_db)
+    if(lyric == None):
         link = get_link(artist, track)
         if(link==None):
             return "Lyric not available!"
         else:
             lyric = get_lyric_from_link(link)
-            #if(lyric != 'Sorry no lyrics!'):
-                #store_lyr(artist,track,lyric,cur,conn)
+            if(lyric != 'Sorry no lyrics!'):
+                store_lyr(artist,track,lyric,lyr_db)
     #print lyric
     lyric = lyric.replace('\\n','\n')
-    #db_disconnect(conn,cur)
     prefix = unicode(track,'utf-8') + '\n' + artist + '\n\n'
     lyric = prefix + lyric
     return lyric
@@ -148,7 +122,10 @@ class Application(Frame):
 
 
 with open('name_translation.json','r') as fp:
-    dic = json.load(fp)
+    name_dic = json.load(fp)
+    
+with open('lyric_db.json','r') as fp:
+    lyr_db = json.load(fp)
     
 print(fetch_lyric())
 
@@ -159,3 +136,6 @@ print(fetch_lyric())
 #app.master.minsize(500, 400)
 #app.mainloop()
 #root.destroy()
+
+with open('lyric_db.json','r') as fp:
+    json.dump(lyr_db,fp)
