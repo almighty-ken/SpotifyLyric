@@ -47,6 +47,7 @@ def get_lyric_from_link(link):
     return lyr_text.group(1)
 
 def get_link(artist,track):
+    artist = artist.encode('utf-8')
     link = 'https://api.musixmatch.com/ws/1.1/track.search?format=json&callback=callback&q_track='
     link += urllib2.quote(track,safe='')
     link += '&q_artist='
@@ -64,14 +65,10 @@ def get_link(artist,track):
     #print url
     return url
 
-def artist_translate(artist,cur):
-    query = "SELECT c_name FROM name_translation WHERE e_name = '" + artist+"';"
-    #print query
-    cur.execute(query)
-    if(cur.rowcount == 0):
-        return artist
-    rows = cur.fetchone()
-    return rows[0]
+def artist_translate(artist,dic):
+    if artist in dic:
+        return dic[artist]
+    return unicode(artist,'utf-8')
 
 def db_connect():
     try:
@@ -106,24 +103,26 @@ def fetch_cached_lyric(artist,track,cur,conn):
         return lyric
 
 def fetch_lyric():
-    conn,cur = db_connect()
+    global dic
+    #conn,cur = db_connect()
     artist = fetch_artist()
-    artist = artist_translate(artist,cur)
+    artist = artist_translate(artist,dic)
     track = fetch_track()
-    time = fetch_time()
-    lyric = fetch_cached_lyric(artist,track,cur,conn)
+    #time = fetch_time()
+    #lyric = fetch_cached_lyric(artist,track,cur,conn)
+    lyric = False
     if(lyric == False):
         link = get_link(artist, track)
         if(link==None):
             return "Lyric not available!"
         else:
             lyric = get_lyric_from_link(link)
-            if(lyric != 'Sorry no lyrics!'):
-                store_lyr(artist,track,lyric,cur,conn)
+            #if(lyric != 'Sorry no lyrics!'):
+                #store_lyr(artist,track,lyric,cur,conn)
     #print lyric
     lyric = lyric.replace('\\n','\n')
-    db_disconnect(conn,cur)
-    prefix = unicode(track,'utf-8') + '\n' + unicode(artist,'utf-8') + '\n\n'
+    #db_disconnect(conn,cur)
+    prefix = unicode(track,'utf-8') + '\n' + artist + '\n\n'
     lyric = prefix + lyric
     return lyric
                    
@@ -146,15 +145,17 @@ class Application(Frame):
         self.pack()
         self.createWidgets()
         
-#print(fetch_lyric())
 
-root = Tk()
-app = Application(master=root)
-app.master.title("LyricCrawl")
-app.master.maxsize(500, 400)
-app.master.minsize(500, 400)
-app.mainloop()
-#root.destroy()
+
+with open('name_translation.json','r') as fp:
+    dic = json.load(fp)
     
-#if __name__ == '__main__':
-    #main()
+print(fetch_lyric())
+
+#root = Tk()
+#app = Application(master=root)
+#app.master.title("LyricCrawl")
+#app.master.maxsize(500, 400)
+#app.master.minsize(500, 400)
+#app.mainloop()
+#root.destroy()
