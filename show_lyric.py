@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/Users/ken/anaconda2/bin/python
 
 from subprocess import Popen, PIPE
 import json
@@ -38,11 +38,12 @@ def get_lyric_from_link(link):
     try:
         data = urllib2.urlopen(link)
     except:
-        print 'Sorry no lyrics!'
-        return
+        return 'Sorry no lyrics!'
     soup = BeautifulSoup(data,'html.parser')
     lyr_group = soup.find('script',text=re.compile('__mxmState'))
     lyr_text = re.search(r'"body":"([^"]*)',lyr_group.text)
+    if(not lyr_text):
+        return 'Sorry no lyrics!'
     return lyr_text.group(1)
 
 def get_link(artist,track):
@@ -51,9 +52,15 @@ def get_link(artist,track):
     link += '&q_artist='
     link += urllib2.quote(artist,safe='')
     link += '&quorum_factor=1&apikey=b8ee0310a43cf402ea580d6d03873447'
-    response = urllib2.urlopen(link)#.read()
+    try:
+        response = urllib2.urlopen(link)
+    except:
+        return None
     data = json.load(response)
-    url = data['message']['body']['track_list'][0]['track']['track_share_url']
+    try:
+        url = data['message']['body']['track_list'][0]['track']['track_share_url']
+    except:
+        url = None
     #print url
     return url
 
@@ -98,7 +105,7 @@ def fetch_cached_lyric(artist,track,cur,conn):
         lyric = urllib2.unquote(lyric)
         return lyric
 
-def main():
+def fetch_lyric():
     conn,cur = db_connect()
     artist = fetch_artist()
     artist = artist_translate(artist,cur)
@@ -107,44 +114,47 @@ def main():
     lyric = fetch_cached_lyric(artist,track,cur,conn)
     if(lyric == False):
         link = get_link(artist, track)
-        lyric = get_lyric_from_link(link)        
-        store_lyr(artist,track,lyric,cur,conn)
+        if(link==None):
+            return "Lyric not available!"
+        else:
+            lyric = get_lyric_from_link(link)
+            if(lyric != 'Sorry no lyrics!'):
+                store_lyr(artist,track,lyric,cur,conn)
     #print lyric
     lyric = lyric.replace('\\n','\n')
-    print lyric
     db_disconnect(conn,cur)
-    
-#main()
-
+    prefix = unicode(track,'utf-8') + '\n' + unicode(artist,'utf-8') + '\n\n'
+    lyric = prefix + lyric
+    return lyric
+                   
 class Application(Frame):
-    def say_hi(self):
-        print "hi there, everyone!"
+    def get_lyric(self,txt_box):
+        lyric = fetch_lyric()
+        txt_box.delete(1.0,END)
+        txt_box.insert(INSERT,lyric)
 
     def createWidgets(self):
-        self.QUIT = Button(self)
-        self.QUIT["text"] = "QUIT"
-        self.QUIT["fg"]   = "red"
-        self.QUIT["command"] =  self.quit
-
-        self.QUIT.pack({"side": "left"})
-
-        self.hi_there = Button(self)
-        self.hi_there["text"] = "Hello",
-        self.hi_there["command"] = self.say_hi
-
-        self.hi_there.pack({"side": "left"})
+        self.get_lyr = Button(self,text="Refresh Lyrics")
+        self.get_lyr.pack({"side": "left"})
+        self.show_lyr = Text(self)
+        self.show_lyr.insert(END,"")
+        self.show_lyr.pack({"side":"right"})        
+        self.get_lyr["command"] = lambda: self.get_lyric(self.show_lyr)
 
     def __init__(self, master=None):
         Frame.__init__(self, master)
         self.pack()
         self.createWidgets()
+        
+#print(fetch_lyric())
 
 root = Tk()
 app = Application(master=root)
 app.master.title("LyricCrawl")
-app.master.maxsize(1000, 400)
+app.master.maxsize(500, 400)
+app.master.minsize(500, 400)
 app.mainloop()
-root.destroy()
+#root.destroy()
     
 #if __name__ == '__main__':
     #main()
