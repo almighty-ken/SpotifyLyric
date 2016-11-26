@@ -5,8 +5,8 @@ import json
 import urllib2
 from bs4 import BeautifulSoup
 import re
-import psycopg2
 from Tkinter import *
+import pickle
 
 musicmatch_key = "b8ee0310a43cf402ea580d6d03873447"
 
@@ -82,10 +82,11 @@ def fetch_lyric():
     global name_dic
     global lyr_db
     artist = fetch_artist()
-    artist = artist_translate(artist,dic)
+    artist = artist_translate(artist,name_dic)
     track = fetch_track()
     #time = fetch_time()
-    lyric = fetch_cached_lyric(artist,track,lyr_db)
+    #lyric = fetch_cached_lyric(artist,track,lyr_db)
+    lyric = None
     if(lyric == None):
         link = get_link(artist, track)
         if(link==None):
@@ -124,18 +125,20 @@ class Application(Frame):
 with open('name_translation.json','r') as fp:
     name_dic = json.load(fp)
     
-with open('lyric_db.json','r') as fp:
-    lyr_db = json.load(fp)
+lyr_db = pickle.load(open('lyric_db.pkl','rb'))
+#lyr_db = {}
     
-print(fetch_lyric())
+#with open('lyric_db.pkl','r') as fp:
+    #lyr_db = pickle.load(fp)
+    
+#print(fetch_lyric())
 
-#root = Tk()
-#app = Application(master=root)
-#app.master.title("LyricCrawl")
-#app.master.maxsize(500, 400)
-#app.master.minsize(500, 400)
-#app.mainloop()
+root = Tk()
+app = Application(master=root)
+app.master.title("LyricCrawl")
+app.master.maxsize(500, 400)
+app.master.minsize(500, 400)
+app.mainloop()
 #root.destroy()
 
-with open('lyric_db.json','r') as fp:
-    json.dump(lyr_db,fp)
+pickle.dump(lyr_db, open('lyric_db.pkl','wb'), pickle.HIGHEST_PROTOCOL)
