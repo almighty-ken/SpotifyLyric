@@ -1,4 +1,4 @@
-#!/Users/ken/anaconda2/bin/python
+#!/usr/bin/env python
 
 from subprocess import Popen, PIPE
 import json
