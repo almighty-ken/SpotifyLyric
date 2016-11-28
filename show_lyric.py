@@ -85,8 +85,8 @@ def fetch_lyric():
     artist = artist_translate(artist,name_dic)
     track = fetch_track()
     #time = fetch_time()
-    #lyric = fetch_cached_lyric(artist,track,lyr_db)
-    lyric = None
+    lyric = fetch_cached_lyric(artist,track,lyr_db)
+    #lyric = None
     if(lyric == None):
         link = get_link(artist, track)
         if(link==None):
